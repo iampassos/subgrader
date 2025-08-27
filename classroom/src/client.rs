@@ -49,6 +49,7 @@ impl ClassroomClient {
         let scopes = &[
             "https://www.googleapis.com/auth/classroom.courses.readonly",
             "https://www.googleapis.com/auth/classroom.coursework.students.readonly",
+            "https://www.googleapis.com/auth/drive.readonly",
         ];
 
         let token = auth.token(scopes).await?;

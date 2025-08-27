@@ -1,4 +1,4 @@
-use reqwest::Client;
+use reqwest::{Client, RequestBuilder};
 use serde::Deserialize;
 
 use crate::client::ClassroomClient;
@@ -154,5 +154,21 @@ impl ClassroomApi {
         let submissions: StudentSubmissions = resp.json().await?;
 
         Ok(submissions)
+    }
+
+    pub fn build_student_submission_download(
+        &self,
+        file_id: &str,
+    ) -> Result<RequestBuilder, Box<dyn std::error::Error>> {
+        let token = self.classroom_client.token().ok_or("Token not found")?;
+
+        let resp = self
+            .http_client
+            .get(format!(
+                "https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
+            ))
+            .bearer_auth(token);
+
+        Ok(resp)
     }
 }
