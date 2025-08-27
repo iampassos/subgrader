@@ -1,4 +1,4 @@
-use reqwest::{Client, RequestBuilder};
+use reqwest::{Client, RequestBuilder, Response};
 use serde::Deserialize;
 
 use crate::client::ClassroomClient;
@@ -57,6 +57,27 @@ pub struct StudentSubmission {
 #[serde(rename_all = "camelCase")]
 pub struct StudentSubmissions {
     pub student_submissions: Vec<StudentSubmission>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Name {
+    pub full_name: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserProfile {
+    pub id: String,
+    pub email_address: String,
+    pub name: Name,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Student {
+    pub user_id: String,
+    pub profile: UserProfile,
 }
 
 #[derive(Deserialize, Debug)]
@@ -135,6 +156,32 @@ impl ClassroomApi {
         let works: CourseWorks = resp.json().await?;
 
         Ok(works)
+    }
+
+    pub fn build_student_request(
+        &self,
+        course_id: &str,
+        user_id: &str,
+    ) -> Result<RequestBuilder, Box<dyn std::error::Error>> {
+        let token = self.classroom_client.token().ok_or("Token not found")?;
+
+        let resp = self
+            .http_client
+            .get(format!(
+                "https://classroom.googleapis.com/v1/courses/{course_id}/students/{user_id}"
+            ))
+            .bearer_auth(token);
+
+        Ok(resp)
+    }
+
+    pub async fn handle_student_response(
+        &self,
+        response: Response,
+    ) -> Result<Student, Box<dyn std::error::Error>> {
+        let student: Student = response.json().await?;
+
+        Ok(student)
     }
 
     pub async fn get_student_submissions(

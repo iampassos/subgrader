@@ -41,7 +41,6 @@ pub async fn download_classroom_submissions(
                         pb.set_style(ProgressStyle::with_template(
                                         "{spinner:.green} [{elapsed_precise}] [{bar:40.white/white}] {bytes}/{total_bytes} {prefix:.bold} {msg}",
                                     )?.progress_chars("#>-"));
-                        pb.set_prefix(att.drive_file.title.clone());
 
                         let api_clone = Arc::clone(&api);
 
@@ -49,27 +48,40 @@ pub async fn download_classroom_submissions(
 
                         fs::create_dir_all(&path).await?;
 
+                        let user_id = submission.user_id.clone();
+                        let course_id = course_id.clone();
+
                         handles.push(tokio::spawn(async move {
-                            let resp = {
+                            let sub_resp = {
                                 let lock = api_clone.lock().await;
                                 lock.build_student_submission_download(&att.drive_file.id)
                                     .unwrap()
                             };
 
-                            let resp = resp.send().await.unwrap();
+                            let sub_resp = sub_resp.send().await.unwrap();
 
-                            let size = resp.content_length().unwrap_or(0);
+                            let stud_resp = {
+                                let lock = api_clone.lock().await;
+                                lock.build_student_request(&course_id, &user_id).unwrap()
+                            };
+
+                            let student = {
+                                let resp = stud_resp.send().await.unwrap();
+                                let lock = api_clone.lock().await;
+                                lock.handle_student_response(resp).await.unwrap()
+                            };
+
+                            pb.set_prefix(student.profile.email_address.clone());
+
+                            let size = sub_resp.content_length().unwrap_or(0);
                             pb.set_length(size);
 
-                            let path_assignment = format!(
-                                "{}/{}",
-                                &path,
-                                att.drive_file.title.clone().to_lowercase()
-                            );
+                            let path_assignment =
+                                format!("{}/{}.zip", &path, student.profile.email_address);
 
                             let mut file = fs::File::create(&path_assignment).await.unwrap();
 
-                            let mut stream = resp.bytes_stream();
+                            let mut stream = sub_resp.bytes_stream();
 
                             while let Some(item) = stream.next().await {
                                 let chunk = item.unwrap();
@@ -93,7 +105,7 @@ pub async fn download_classroom_submissions(
                             }
 
                             if let Err(e) = crate::utils::unzip_submission(&path_assignment) {
-                                pb.abandon_with_message(format!("{} {e}", "error".red()));
+                                pb.abandon_with_message(format!("{} -> {e}", "error".red()));
                             } else {
                                 pb.finish_with_message(format!("{}", "success".green()));
                             }
