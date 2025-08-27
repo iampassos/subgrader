@@ -1,4 +1,29 @@
-use yup_oauth2::InstalledFlowAuthenticator;
+use std::pin::Pin;
+
+use yup_oauth2::{
+    InstalledFlowAuthenticator, InstalledFlowReturnMethod,
+    authenticator_delegate::{DefaultInstalledFlowDelegate, InstalledFlowDelegate},
+    read_application_secret,
+};
+
+async fn browser_user_url(url: &str, need_code: bool) -> Result<String, String> {
+    _ = webbrowser::open(url);
+    let def_delegate = DefaultInstalledFlowDelegate;
+    def_delegate.present_user_url(url, need_code).await
+}
+
+#[derive(Copy, Clone)]
+struct InstalledFlowBrowserDelegate;
+
+impl InstalledFlowDelegate for InstalledFlowBrowserDelegate {
+    fn present_user_url<'a>(
+        &'a self,
+        url: &'a str,
+        need_code: bool,
+    ) -> Pin<Box<dyn Future<Output = Result<String, String>> + Send + 'a>> {
+        Box::pin(browser_user_url(url, need_code))
+    }
+}
 
 #[derive(Default)]
 pub struct ClassroomClient {
@@ -12,14 +37,14 @@ impl ClassroomClient {
     }
 
     pub async fn auth(&mut self, credentials_path: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let secret = yup_oauth2::read_application_secret(credentials_path).await?;
+        let secret = read_application_secret(credentials_path).await?;
 
-        let auth = InstalledFlowAuthenticator::builder(
-            secret,
-            yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
-        )
-        .build()
-        .await?;
+        let auth =
+            InstalledFlowAuthenticator::builder(secret, InstalledFlowReturnMethod::HTTPRedirect)
+                .persist_tokens_to_disk("tokencache.json")
+                .flow_delegate(Box::new(InstalledFlowBrowserDelegate))
+                .build()
+                .await?;
 
         let scopes = &[
             "https://www.googleapis.com/auth/classroom.courses.readonly",
