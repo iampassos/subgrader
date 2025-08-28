@@ -30,7 +30,7 @@ pub struct AssignmentSubmission {
     pub attachments: Option<Vec<Attachment>>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SubmissionState {
     SubmissionStateUnspecified,

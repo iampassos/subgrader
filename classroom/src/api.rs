@@ -1,4 +1,4 @@
-use reqwest::{Client, RequestBuilder, Response};
+use reqwest::{Client, Response};
 
 use crate::client::ClassroomClient;
 use crate::models::{Course, CourseWorks, Courses, Student, StudentSubmissions};
