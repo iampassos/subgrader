@@ -8,7 +8,7 @@ use tokio::{
     sync::Mutex,
 };
 
-use classroom::api::{ClassroomApi, SubmissionState};
+use classroom::{api::ClassroomApi, models::SubmissionState};
 
 pub async fn download_classroom_submissions(
     api: Arc<Mutex<ClassroomApi>>,
