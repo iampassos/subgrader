@@ -11,6 +11,11 @@ pub fn unzip_submission(zip_path: &str) -> Result<(), Box<dyn std::error::Error>
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
+        let file_path = Path::new(file.name());
+
+        if file_path.components().any(|c| c.as_os_str() == "__MACOSX") {
+            continue;
+        }
 
         if file.is_dir() {
             continue;
