@@ -1,7 +1,12 @@
 use colored::Colorize;
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
-use std::{path::Path, sync::Arc, time::Instant};
+use std::{
+    io::{self, Write},
+    path::Path,
+    sync::Arc,
+    time::Instant,
+};
 use tokio::{
     fs::{self},
     io::AsyncWriteExt,
@@ -20,6 +25,7 @@ pub async fn download_classroom_submissions(
     let started = Instant::now();
 
     println!("{} all student submissions", "Fetching".green().bold());
+    io::stdout().flush().unwrap();
 
     let submissions = api
         .get_student_submissions(&course_id, &assignment_id)
@@ -117,10 +123,8 @@ pub async fn download_classroom_submissions(
 
     bar.finish();
 
-    println!("{} all submissions", "Formatted".green().bold());
-
     println!(
-        "{} in {:.2}s",
+        "{} and formatted all submissions in {:.2}s",
         "Finished".green().bold(),
         Instant::now().duration_since(started).as_secs_f32()
     );
