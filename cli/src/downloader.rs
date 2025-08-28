@@ -24,8 +24,7 @@ pub async fn download_classroom_submissions(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let started = Instant::now();
 
-    println!("{} all student submissions", "Fetching".green().bold());
-    io::stdout().flush().unwrap();
+    println!(" :: {} all student submissions", "Fetching".green().bold());
 
     let submissions = api
         .get_student_submissions(&course_id, &assignment_id)
@@ -45,8 +44,10 @@ pub async fn download_classroom_submissions(
     let bar = Arc::new(ProgressBar::new(valid_submissions.len() as u64));
     bar.set_draw_target(ProgressDrawTarget::stdout_with_hz(1));
     bar.set_style(
-        ProgressStyle::with_template("{prefix:>12.cyan.bold} [{bar:57}] {pos}/{len} {percent}%")?
-            .progress_chars("## "),
+        ProgressStyle::with_template(
+            " ::{prefix:>12.cyan.bold} [{bar:57}] {pos}/{len} {percent}%",
+        )?
+        .progress_chars("## "),
     );
     bar.set_prefix("Downloading");
 
@@ -98,7 +99,7 @@ pub async fn download_classroom_submissions(
 
                 if !is_zip {
                     bar.println(format!(
-                        "{} {} invalid zip",
+                        " :: {} {} invalid zip",
                         "Error".red().bold(),
                         student.profile.email_address.clone().bold()
                     ));
@@ -107,7 +108,7 @@ pub async fn download_classroom_submissions(
 
                 if let Err(e) = crate::utils::unzip_submission(&path_assignment) {
                     bar.println(format!(
-                        "{} {} {}",
+                        " :: {} {} {}",
                         "Error".red().bold(),
                         student.profile.email_address.clone().bold(),
                         e
@@ -124,7 +125,7 @@ pub async fn download_classroom_submissions(
     bar.finish();
 
     println!(
-        "{} and formatted all submissions in {:.2}s",
+        " :: {} and formatted all submissions in {:.2}s",
         "Finished".green().bold(),
         Instant::now().duration_since(started).as_secs_f32()
     );

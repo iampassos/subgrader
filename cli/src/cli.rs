@@ -21,6 +21,9 @@ pub enum Commands {
 
 #[derive(Subcommand, Debug)]
 pub enum ClassroomCommands {
+    /// Menu interativo para o download das submissões de um exercício
+    Assistant,
+
     /// Lista os cursos em que o usuário faz parte
     ListCourses,
 

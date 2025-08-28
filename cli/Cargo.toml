@@ -14,3 +14,4 @@ colored = { version = "2.0" }
 zip = { version = "4.5.0" }
 futures = { version = "0.3" }
 regex = { version = "1.11.2" }
+dialoguer = { version = "0.12.0" }
