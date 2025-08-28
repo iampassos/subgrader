@@ -69,11 +69,11 @@ impl ClassroomApi {
         Ok(works)
     }
 
-    pub fn build_student_request(
+    pub async fn get_student(
         &self,
         course_id: &str,
         user_id: &str,
-    ) -> Result<RequestBuilder, Box<dyn std::error::Error>> {
+    ) -> Result<Student, Box<dyn std::error::Error>> {
         let token = self.classroom_client.token().ok_or("Token not found")?;
 
         let resp = self
@@ -81,16 +81,11 @@ impl ClassroomApi {
             .get(format!(
                 "https://classroom.googleapis.com/v1/courses/{course_id}/students/{user_id}"
             ))
-            .bearer_auth(token);
+            .bearer_auth(token)
+            .send()
+            .await?;
 
-        Ok(resp)
-    }
-
-    pub async fn handle_student_response(
-        &self,
-        response: Response,
-    ) -> Result<Student, Box<dyn std::error::Error>> {
-        let student: Student = response.json().await?;
+        let student: Student = resp.json().await?;
 
         Ok(student)
     }
@@ -114,10 +109,10 @@ impl ClassroomApi {
         Ok(submissions)
     }
 
-    pub fn build_student_submission_download(
+    pub async fn download_student_submission(
         &self,
         file_id: &str,
-    ) -> Result<RequestBuilder, Box<dyn std::error::Error>> {
+    ) -> Result<Response, Box<dyn std::error::Error>> {
         let token = self.classroom_client.token().ok_or("Token not found")?;
 
         let resp = self
@@ -125,7 +120,9 @@ impl ClassroomApi {
             .get(format!(
                 "https://www.googleapis.com/drive/v3/files/{file_id}?alt=media"
             ))
-            .bearer_auth(token);
+            .bearer_auth(token)
+            .send()
+            .await?;
 
         Ok(resp)
     }
