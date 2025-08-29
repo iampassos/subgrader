@@ -5,7 +5,7 @@ from pycparser import c_parser, c_ast
 import re
 from collections import defaultdict
 import json
-import math
+import os
 
 # -------------------------------
 # Funções AST
@@ -265,6 +265,8 @@ def main(path_alunos, json_output, dificuldade):
     resultados = comparar_questoes(questoes, alunos_json, threshold)
 
     # gerar_relatorio_html(resultados)
+
+    os.makedirs("resultados", exist_ok=True)
 
     with open(json_output, "w", encoding="utf-8") as f:
         json.dump(alunos_json, f, ensure_ascii=False, indent=4)
