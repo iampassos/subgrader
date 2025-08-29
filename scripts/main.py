@@ -146,12 +146,14 @@ def carregar_questoes(pasta_base, alunos_json):
                         codigo = f.read()
                 except:
                     print(f"Não foi possível abrir o arquivo: {caminho_aluno}")
-                    alunos_json[aluno_nome]["erros"].append(f"ERRO AO ABRIR ARQUIVO {arquivo}")
+                    alunos_json[aluno_nome]["erros"].append(
+                        f"ERRO AO ABRIR ARQUIVO {arquivo}")
                     continue
 
                 if not codigo.strip():
                     print(f"Aviso: arquivo vazio {arquivo} ignorado")
-                    alunos_json[aluno_nome]["erros"].append(f"[001] ARQUIVO {arquivo} VAZIO")
+                    alunos_json[aluno_nome]["erros"].append(
+                        f"[001] ARQUIVO {arquivo} VAZIO")
                     continue
 
                 codigo_limpo = remover_hashtag(codigo)
@@ -160,9 +162,11 @@ def carregar_questoes(pasta_base, alunos_json):
                 ast = gerar_ast(codigo_limpo)
                 if not ast:
                     print(
-                        f"Aviso: arquivo {arquivo} não pôde ser parseado e será ignorado"
+                        f"Aviso: arquivo {
+                            arquivo} não pôde ser parseado e será ignorado"
                     )
-                    alunos_json[aluno_nome]["erros"].append(f"[002] ARQUIVO {arquivo} NÃO PÔDE SER PARSEADO")
+                    alunos_json[aluno_nome]["erros"].append(
+                        f"[002] ARQUIVO {arquivo} NÃO PÔDE SER PARSEADO")
                     continue
 
                 assinatura = extrair_assinatura(ast)
@@ -208,7 +212,8 @@ def comparar_questoes(questoes, alunos_json, threshold=0.85):
                 resultados.append((a, b, sim_final))
                 aluno_a_nome = a.split("_")[1]
                 alunos_json[aluno_a_nome]["erros"].append(
-                    f"[003] COPIA DETECTADA ENTRE {a} e {b} DE {sim_final * 100:.2f}"
+                    f"[003] COPIA DETECTADA ENTRE {a} e {
+                        b} DE {sim_final * 100:.2f}"
                 )
 
     resultados.sort(key=lambda x: x[2], reverse=True)
@@ -239,7 +244,8 @@ def gerar_relatorio_html(resultados, arquivo_saida="relatorio.html"):
         else:
             classe = "baixo"
         html += (
-            f"<tr class='{classe}'><td>{a}</td><td>{b}</td><td>{sim*100:.2f}</td></tr>"
+            f"<tr class='{classe}'><td>{
+                a}</td><td>{b}</td><td>{sim*100:.2f}</td></tr>"
         )
 
     html += "</table></body></html>"
@@ -275,7 +281,7 @@ def main(path_alunos, json_output, dificuldade):
 
 
 if __name__ == "__main__":
-    pasta_base = "submissions/790450373123/790450373216/"
+    pasta_base = "../submissions/790450373123/790450373216/"
     json_output = "resultados/data.json"
 
     resultados_json = main(pasta_base, json_output, 2)

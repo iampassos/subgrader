@@ -17,6 +17,12 @@ pub enum Commands {
         #[command(subcommand)]
         command: ClassroomCommands,
     },
+
+    /// Comandos relacionados ao comparador de similaridade
+    Similarity {
+        #[command(subcommand)]
+        command: SimilarityCommands,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -40,5 +46,17 @@ pub enum ClassroomCommands {
 
         #[arg(short, long)]
         assignment_id: String,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+pub enum SimilarityCommands {
+    // Compara a similaridade de 2 arquivos
+    Compare {
+        #[arg(short, long)]
+        file1: String,
+
+        #[arg(short, long)]
+        file2: String,
     },
 }

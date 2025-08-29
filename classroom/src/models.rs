@@ -56,13 +56,13 @@ pub struct StudentSubmissions {
     pub student_submissions: Vec<StudentSubmission>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Name {
     pub full_name: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct UserProfile {
     pub id: String,
@@ -70,11 +70,18 @@ pub struct UserProfile {
     pub name: Name,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Student {
     pub user_id: String,
     pub profile: UserProfile,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Students {
+    pub students: Vec<Student>,
+    pub next_page_token: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]

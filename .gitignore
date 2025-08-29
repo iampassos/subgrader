@@ -1,5 +1,5 @@
 /target
-credentials.json
-tokencache.json
 submissions
 resultados
+*.csv
+*.json

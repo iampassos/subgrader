@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 classroom = { path = "../classroom" }
+reporter = { path = "../reporter" }
 clap = { version = "4.5.46", features = ["derive"]}
 tokio = { version = "1", features = ["full"] }
 indicatif = { version = "0.18" }

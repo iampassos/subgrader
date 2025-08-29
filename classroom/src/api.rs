@@ -1,7 +1,7 @@
 use reqwest::{Client, Response};
 
 use crate::client::ClassroomClient;
-use crate::models::{Course, CourseWorks, Courses, Student, StudentSubmissions};
+use crate::models::{Course, CourseWorks, Courses, Student, StudentSubmissions, Students};
 
 pub struct ClassroomApi {
     http_client: Client,
@@ -88,6 +88,44 @@ impl ClassroomApi {
         let student: Student = resp.json().await?;
 
         Ok(student)
+    }
+
+    pub async fn list_students(
+        &self,
+        course_id: &str,
+    ) -> Result<Students, Box<dyn std::error::Error>> {
+        let token = self.classroom_client.token().ok_or("Token not found")?;
+
+        let mut students = Students {
+            students: vec![],
+            next_page_token: None,
+        };
+
+        let mut next_page_token = None;
+
+        loop {
+            let mut url = format!(
+                "https://classroom.googleapis.com/v1/courses/{course_id}/students?pageSize=100"
+            );
+
+            if let Some(ref ptk) = next_page_token {
+                url.push_str(&format!("&pageToken={ptk}"));
+            }
+
+            let resp = self.http_client.get(url).bearer_auth(token).send().await?;
+
+            let stds: Students = resp.json().await?;
+
+            students.students.extend(stds.students);
+
+            next_page_token = stds.next_page_token;
+
+            if next_page_token.is_none() {
+                break;
+            }
+        }
+
+        Ok(students)
     }
 
     pub async fn get_student_submissions(
