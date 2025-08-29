@@ -24,7 +24,10 @@ pub async fn download_classroom_submissions(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let started = Instant::now();
 
-    println!(" :: {} all student submissions", "Fetching".green().bold());
+    println!(
+        " :: {} all student submissions [{course_id}/{assignment_id}]",
+        "Fetching".green().bold()
+    );
 
     let submissions = api
         .get_student_submissions(&course_id, &assignment_id)
@@ -99,8 +102,9 @@ pub async fn download_classroom_submissions(
 
                 if !is_zip {
                     bar.println(format!(
-                        " :: {} {} invalid zip",
+                        " :: {} {} ({}) invalid zip",
                         "Error".red().bold(),
+                        student.profile.name.full_name.clone().bold(),
                         student.profile.email_address.clone().bold()
                     ));
                     return;
@@ -108,8 +112,9 @@ pub async fn download_classroom_submissions(
 
                 if let Err(e) = crate::utils::unzip_submission(&path_assignment) {
                     bar.println(format!(
-                        " :: {} {} {}",
+                        " :: {} {} ({}) {}",
                         "Error".red().bold(),
+                        student.profile.name.full_name.clone().bold(),
                         student.profile.email_address.clone().bold(),
                         e
                     ));
