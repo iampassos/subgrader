@@ -2,9 +2,7 @@ import difflib
 import itertools
 from pycparser import c_parser, c_ast
 import re
-import os
 import math
-from collections import Counter
 
 # -------------------------------
 # Funções AST
@@ -187,16 +185,16 @@ def comparar_dois_codigos(path_codigo_a, path_codigo_b):
                     codigo = f.read()
             except:
                 print(f"Não foi possível abrir o arquivo: {arquivo}")
-                return
+                return -1.0
 
             if not codigo.strip():
                 print(f"Aviso: arquivo vazio {arquivo} ignorado")
-                return
+                return -1.0
 
             codigo_limpo = preprocess_code(codigo)
             ast = gerar_ast(codigo_limpo)
             if not ast:
-                return
+                return -1.0
 
             assinatura = extrair_assinatura(ast)
             func_visitor = ASTFunctionVisitor()
