@@ -14,7 +14,7 @@ def gerar_ast(code: str):
     try:
         return parser.parse(code)
     except Exception as e:
-        print("Erro ao parsear código:", e)
+        # print("Erro ao parsear código:", e)
         return None
 
 
@@ -175,7 +175,31 @@ def preprocess_code(codigo):
 # Comparar arquivos
 # -------------------------------
 
-def comparar_dois_codigos(path_codigo_a, path_codigo_b):
+def comparar_dois_codigos(codigo1, codigo2):
+    questoes = []
+
+    if not codigo1.strip() or not codigo2.strip():
+        return -1.0
+
+    for codigo in (codigo1, codigo2):
+        codigo_limpo = preprocess_code(codigo)
+        ast = gerar_ast(codigo_limpo)
+        if not ast:
+            return -1.0
+
+        assinatura = extrair_assinatura(ast)
+        func_visitor = ASTFunctionVisitor()
+        func_visitor.visit(ast)
+
+        questoes.append((assinatura, func_visitor.functions))
+
+    sim_arquivo = similaridade_combinada(questoes[0][0], questoes[1][0])
+    sim_funcoes = similaridade_funcoes(questoes[0][1], questoes[1][1])
+
+    return (sim_arquivo + sim_funcoes) / 2
+
+
+def comparar_dois_arquivos(path_codigo_a, path_codigo_b):
     questoes = []
 
     for arquivo in (path_codigo_a, path_codigo_b):
@@ -184,11 +208,11 @@ def comparar_dois_codigos(path_codigo_a, path_codigo_b):
                 with open(arquivo, "r", encoding="utf-8") as f:
                     codigo = f.read()
             except:
-                print(f"Não foi possível abrir o arquivo: {arquivo}")
+                # print(f"Não foi possível abrir o arquivo: {arquivo}")
                 return -1.0
 
             if not codigo.strip():
-                print(f"Aviso: arquivo vazio {arquivo} ignorado")
+                # print(f"Aviso: arquivo vazio {arquivo} ignorado")
                 return -1.0
 
             codigo_limpo = preprocess_code(codigo)

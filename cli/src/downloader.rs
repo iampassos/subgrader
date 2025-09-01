@@ -16,8 +16,8 @@ use reporter::{SubmissionError, SubmissionResult};
 
 pub async fn download_classroom_submissions(
     api: Arc<ClassroomApi>,
-    course_id: String,
-    assignment_id: String,
+    course_id: &str,
+    assignment_id: &str,
     mut results: Vec<SubmissionResult>,
 ) -> Result<Vec<SubmissionResult>, Box<dyn std::error::Error>> {
     let started = Instant::now();
@@ -27,7 +27,7 @@ pub async fn download_classroom_submissions(
         "Fetching".green().bold()
     );
 
-    let students = api.list_students(&course_id).await?;
+    let students = api.list_students(course_id).await?;
     let students: Arc<HashMap<String, _>> = Arc::new(
         students
             .students
@@ -37,7 +37,7 @@ pub async fn download_classroom_submissions(
     );
 
     let submissions = api
-        .get_student_submissions(&course_id, &assignment_id)
+        .get_student_submissions(course_id, &assignment_id)
         .await?;
 
     let valid_submissions: Vec<StudentSubmission> = submissions

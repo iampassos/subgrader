@@ -4,54 +4,19 @@ use dialoguer::{
     console::{Style, style},
     theme::ColorfulTheme,
 };
-use rayon::prelude::*;
-use std::{fs, sync::Arc};
+use std::sync::Arc;
 
 use classroom::{api::ClassroomApi, client::ClassroomClient};
+use comparator::similarity_analyzer;
 use downloader::download_classroom_submissions;
 use reporter::{SubmissionResult, generate_report};
-use similarity::compare_files;
 
+mod comparator;
 mod downloader;
 mod utils;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // let mut files = vec![];
-    //
-    // for dir in fs::read_dir("./submissions/779775636211/799310705791/")? {
-    //     let dir = dir?;
-    //     let path = dir.path();
-    //
-    //     if path.is_dir() {
-    //         for entry in fs::read_dir(&path)? {
-    //             let entry = entry?;
-    //             files.push(entry.path());
-    //         }
-    //     }
-    // }
-    //
-    // let mut pairs = vec![];
-    //
-    // for i in 0..files.len() {
-    //     for j in (i + 1)..files.len() {
-    //         pairs.push((files[i].clone(), files[j].clone()));
-    //     }
-    // }
-    //
-    // for p in pairs.clone() {
-    //     let f1 = p.0.file_name().unwrap().to_string_lossy();
-    //     let f2 = p.1.file_name().unwrap().to_string_lossy();
-    //
-    //     let res = compare_files(
-    //         p.0.as_path().to_str().unwrap(),
-    //         p.1.as_path().to_str().unwrap(),
-    //     );
-    //     // println!("{} - {} -> {}", f1, f2, res?);
-    // }
-    //
-    // return Ok(());
-
     let mut client = ClassroomClient::new();
     client.auth("./credentials.json").await?;
     let api = Arc::new(ClassroomApi::new(client));
@@ -99,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let work = works.course_work.get(selection).unwrap();
 
-    let options_selection = &[("Generate report", true)];
+    let options_selection = &[("Similarity check", true), ("Generate report", true)];
 
     let selections = MultiSelect::with_theme(&own_theme)
         .with_prompt("Select more options")
@@ -118,20 +83,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap()
     {
         println!();
-        results = download_classroom_submissions(
-            api.clone(),
-            course.id.clone(),
-            work.id.clone(),
-            results,
-        )
-        .await?;
+        results =
+            download_classroom_submissions(api.clone(), &course.id, &work.id, results).await?;
     } else {
         println!(" :: Cancelled");
     }
 
-    if selections.contains(&0) {
-        let path = format!("./submissions/{}/{}/report.csv", course.id, work.id);
+    if selections.contains(&1) {
+        println!();
+        results = similarity_analyzer(&course.id, &work.id, results)?;
+    }
 
+    if selections.contains(&0) {
+        println!();
+
+        let path = format!("./submissions/{}/{}/report.csv", course.id, work.id);
         generate_report(results, &path)?;
 
         println!(
