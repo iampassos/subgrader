@@ -193,6 +193,12 @@ async fn worker(
     }
 
     if late {
+        bar.println(format!(
+            " :: {} {} ({}) late submission",
+            "Warning".yellow().bold(),
+            student.profile.name.full_name.clone().bold(),
+            student.profile.email_address.clone().bold(),
+        ));
         errors.push(SubmissionError::Late);
     }
 

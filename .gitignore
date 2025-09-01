@@ -1,5 +1,6 @@
 /target
 submissions
 resultados
+__pycache__
 *.csv
 *.json

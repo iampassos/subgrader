@@ -43,8 +43,11 @@ impl SubmissionError {
     }
 }
 
-pub fn generate_report(results: Vec<SubmissionResult>) -> Result<(), Box<dyn std::error::Error>> {
-    let mut wtr = csv::Writer::from_path("./report.csv")?;
+pub fn generate_report(
+    results: Vec<SubmissionResult>,
+    path: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut wtr = csv::Writer::from_path(path)?;
 
     for result in results {
         let mut comments = result.comments.join(", ");

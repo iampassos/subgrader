@@ -6,7 +6,8 @@ edition = "2024"
 [dependencies]
 classroom = { path = "../classroom" }
 reporter = { path = "../reporter" }
-clap = { version = "4.5.46", features = ["derive"]}
+similarity = { path = "../similarity" }
+rayon = { version = "1.11.0" }
 tokio = { version = "1", features = ["full"] }
 indicatif = { version = "0.18" }
 reqwest = { version = "0.12", features = ["json", "stream"] }
