@@ -4,4 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-pyo3 = { version = "0.26.0", features = ["auto-initialize"] }
+regex = { version = "1.0" }
+tree-sitter = { version = "0.24" }
+tree-sitter-c = { version = "0.23" }
+strsim = { version = "0.11.1" }

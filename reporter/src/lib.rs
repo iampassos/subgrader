@@ -1,5 +1,3 @@
-use std::ops::Mul;
-
 use serde::Serialize;
 
 use classroom::models::Student;
@@ -27,6 +25,7 @@ pub enum SubmissionError {
     PlagiarismDetected(String, String, f32),
     ZipError,
     Late,
+    EmptyFile(String),
 }
 
 impl SubmissionError {
@@ -41,6 +40,9 @@ impl SubmissionError {
                     "PLAGIARISM DETECTED {f1} WITH {f2} ({:.2}%)",
                     *percentage * 100.0
                 )
+            }
+            SubmissionError::EmptyFile(f) => {
+                format!("EMPTY FILE {f}")
             }
             SubmissionError::ZipError => "ERROR WHILE EXTRACTING ZIP".to_string(),
             SubmissionError::Late => "LATE SUBMISSION".to_string(),

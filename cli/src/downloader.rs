@@ -37,7 +37,7 @@ pub async fn download_classroom_submissions(
     );
 
     let submissions = api
-        .get_student_submissions(course_id, &assignment_id)
+        .get_student_submissions(course_id, assignment_id)
         .await?;
 
     let valid_submissions: Vec<StudentSubmission> = submissions

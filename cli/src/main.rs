@@ -1,6 +1,6 @@
 use colored::Colorize;
 use dialoguer::{
-    Confirm, MultiSelect, Select,
+    MultiSelect, Select,
     console::{Style, style},
     theme::ColorfulTheme,
 };
@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     client.auth("./credentials.json").await?;
     let api = Arc::new(ClassroomApi::new(client));
 
-    println!(" :: Classroom Subgrader Assistant");
+    println!(" :: Subgrader Assistant");
 
     let courses = api.list_courses().await?;
     let course_selection: Vec<&str> = courses.courses.iter().map(|c| c.name.as_str()).collect();
@@ -74,29 +74,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut results: Vec<SubmissionResult> = vec![];
 
-    if Confirm::with_theme(&own_theme)
-        .with_prompt("Do you want to continue?")
-        .default(true)
-        .show_default(false)
-        .wait_for_newline(true)
-        .interact()
-        .unwrap()
-    {
-        println!();
-        results =
-            download_classroom_submissions(api.clone(), &course.id, &work.id, results).await?;
-    } else {
-        println!(" :: Cancelled");
-    }
+    println!();
+    results = download_classroom_submissions(api.clone(), &course.id, &work.id, results).await?;
 
-    if selections.contains(&1) {
+    if selections.contains(&0) {
         println!();
         results = similarity_analyzer(&course.id, &work.id, results)?;
     }
 
-    if selections.contains(&0) {
-        println!();
-
+    if selections.contains(&1) {
         let path = format!("./submissions/{}/{}/report.csv", course.id, work.id);
         generate_report(results, &path)?;
 
