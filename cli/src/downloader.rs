@@ -195,34 +195,15 @@ async fn worker(
 
         match res {
             Ok(num) => solved = num,
-            Err(e) => {
-                bar.println(format!(
-                    " :: {} {} ({}) {}",
-                    "Error".red().bold(),
-                    student.profile.name.full_name.clone().bold(),
-                    student.profile.email_address.clone().bold(),
-                    e
-                ));
+            Err(_) => {
                 errors.push(SubmissionError::ZipError);
             }
         }
     } else {
-        bar.println(format!(
-            " :: {} {} ({}) invalid zip",
-            "Error".red().bold(),
-            student.profile.name.full_name.clone().bold(),
-            student.profile.email_address.clone().bold()
-        ));
         errors.push(SubmissionError::InvalidZip);
     }
 
     if late {
-        bar.println(format!(
-            " :: {} {} ({}) late submission",
-            "Warning".yellow().bold(),
-            student.profile.name.full_name.clone().bold(),
-            student.profile.email_address.clone().bold(),
-        ));
         errors.push(SubmissionError::Late);
     }
 

@@ -5,6 +5,7 @@ use dialoguer::{
     theme::ColorfulTheme,
 };
 use std::{collections::HashMap, path::Path, sync::Arc};
+use utils::FilePathCompleter;
 
 use beecrowd::beecrowd_report_parser;
 use classroom::{api::ClassroomApi, client::ClassroomClient};
@@ -23,8 +24,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     client.auth("./credentials.json").await?;
     let api = Arc::new(ClassroomApi::new(client));
 
-    println!(" :: Subgrader Assistant");
-
     let courses = api.list_courses().await?;
     let course_selection: Vec<&str> = courses.courses.iter().map(|c| c.name.as_str()).collect();
 
@@ -38,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         values_style: Style::new().for_stderr().green().bold(),
         success_prefix: style(" ::".to_string()).for_stderr().white(),
         success_suffix: style("·".to_string()).for_stderr().black().bright(),
-        prompt_prefix: style(" ::".to_string()).for_stderr().green().bold(),
+        prompt_prefix: style(" :: ?".to_string()).for_stderr().yellow().bold(),
         prompt_style: Style::new().for_stderr().white(),
         error_prefix: style(" ::".to_string()).for_stderr().red(),
         ..ColorfulTheme::default()
@@ -79,21 +78,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .interact()
         .unwrap();
 
-    let mut results: HashMap<String, SubmissionResult> = HashMap::new();
-
-    println!();
-    results = download_classroom_submissions(api.clone(), &course.id, &work.id, results).await?;
-
-    if selections.contains(&0) {
-        println!();
-        results = similarity_analyzer(&course.id, &work.id, results)?;
-    }
+    let mut input: Result<String, dialoguer::Error> = Result::Ok(String::new());
 
     if selections.contains(&1) {
-        println!();
+        let completion = FilePathCompleter::default();
 
-        let input = Input::<String>::with_theme(&own_theme)
+        input = Input::<String>::with_theme(&own_theme)
             .with_prompt("Beecrowd report .csv file-name")
+            .completion_with(&completion)
             .validate_with(|input: &String| -> Result<(), &str> {
                 let path = Path::new(&input);
                 if path.exists()
@@ -108,23 +100,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_initial_text("./")
             .allow_empty(false)
             .interact_text();
+    }
 
+    let mut results: HashMap<String, SubmissionResult> = HashMap::new();
+
+    results = download_classroom_submissions(api.clone(), &course.id, &work.id, results).await?;
+
+    if selections.contains(&0) {
+        results = similarity_analyzer(&course.id, &work.id, results)?;
+    }
+
+    if selections.contains(&1) {
         if let Ok(file) = input {
             results = beecrowd_report_parser(results, Path::new(&file)).unwrap();
-        } else {
-            println!(
-                " :: {} file not specified, skiping Beecrowd check",
-                "Error".red().bold()
-            );
         }
     }
 
     if selections.contains(&2) {
         let path = format!("./submissions/{}/{}/report.csv", course.id, work.id);
+
         generate_report(results, &path)?;
 
         println!(
-            "\n :: {} student report at {}",
+            " :: {} student report at {}",
             "Generated".green().bold(),
             path
         );

@@ -51,8 +51,6 @@ pub fn similarity_analyzer(
                 if let Some(r) = results.get_mut(&email) {
                     r.errors
                         .push(SubmissionError::EmptyFile(file_name.to_string()));
-
-                    println!(" :: {} {file_name} is empty", "Warning".yellow().bold(),);
                 }
 
                 None
@@ -66,7 +64,7 @@ pub fn similarity_analyzer(
     let bar = ProgressBar::new(((file_contents.len() * (file_contents.len() - 1)) / 2) as u64);
     bar.set_style(
         ProgressStyle::with_template(
-            " ::{prefix:>12.cyan.bold} [{bar:57}] {pos}/{len} {percent}%",
+            " ::{prefix:>10.cyan.bold} [{bar:57}] {pos}/{len} {percent}%",
         )?
         .progress_chars("## "),
     );
@@ -120,14 +118,6 @@ fn worker(
                 res,
             ));
         }
-
-        bar.println(format!(
-            " :: {} {} with {} ({:.2}%) similarity detected",
-            "Warning".yellow().bold(),
-            p1.1,
-            p2.1,
-            res * 100.0
-        ));
     }
 
     bar.inc(1);
