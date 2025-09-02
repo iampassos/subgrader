@@ -1,16 +1,18 @@
 use colored::Colorize;
 use dialoguer::{
-    MultiSelect, Select,
+    Input, MultiSelect, Select,
     console::{Style, style},
     theme::ColorfulTheme,
 };
-use std::sync::Arc;
+use std::{collections::HashMap, path::Path, sync::Arc};
 
+use beecrowd::beecrowd_report_parser;
 use classroom::{api::ClassroomApi, client::ClassroomClient};
 use comparator::similarity_analyzer;
 use downloader::download_classroom_submissions;
 use reporter::{SubmissionResult, generate_report};
 
+mod beecrowd;
 mod comparator;
 mod downloader;
 mod utils;
@@ -64,7 +66,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let work = works.course_work.get(selection).unwrap();
 
-    let options_selection = &[("Similarity check", true), ("Generate report", true)];
+    let options_selection = &[
+        ("Check Similarity", true),
+        ("Check Beecrowd", true),
+        ("Make Report", true),
+    ];
 
     let selections = MultiSelect::with_theme(&own_theme)
         .with_prompt("Select more options")
@@ -72,7 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .interact()
         .unwrap();
 
-    let mut results: Vec<SubmissionResult> = vec![];
+    let mut results: HashMap<String, SubmissionResult> = HashMap::new();
 
     println!();
     results = download_classroom_submissions(api.clone(), &course.id, &work.id, results).await?;
@@ -83,6 +89,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if selections.contains(&1) {
+        println!();
+
+        let input = Input::<String>::with_theme(&own_theme)
+            .with_prompt("Beecrowd report .csv file-name")
+            .validate_with(|input: &String| -> Result<(), &str> {
+                let path = Path::new(&input);
+                if path.exists()
+                    && input != "./"
+                    && path.extension().unwrap().to_string_lossy() == "csv"
+                {
+                    Ok(())
+                } else {
+                    Err("File doesn't exist or isn't csv")
+                }
+            })
+            .with_initial_text("./")
+            .allow_empty(false)
+            .interact_text();
+
+        if let Ok(file) = input {
+            results = beecrowd_report_parser(results, Path::new(&file)).unwrap();
+        } else {
+            println!(
+                " :: {} file not specified, skiping Beecrowd check",
+                "Error".red().bold()
+            );
+        }
+    }
+
+    if selections.contains(&2) {
         let path = format!("./submissions/{}/{}/report.csv", course.id, work.id);
         generate_report(results, &path)?;
 

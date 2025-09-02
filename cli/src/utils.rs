@@ -1,6 +1,6 @@
 use std::{fs::File, path::Path};
 
-pub fn unzip_submission(zip_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn unzip_submission(zip_path: &str) -> Result<i32, Box<dyn std::error::Error>> {
     let zip_file = File::open(zip_path)?;
     let mut archive = zip::ZipArchive::new(zip_file)?;
 
@@ -8,6 +8,8 @@ pub fn unzip_submission(zip_path: &str) -> Result<(), Box<dyn std::error::Error>
     std::fs::create_dir_all(out_dir)?;
 
     let rg = regex::Regex::new(r"[qQ]\d+")?;
+
+    let mut res = 0;
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
@@ -43,10 +45,11 @@ pub fn unzip_submission(zip_path: &str) -> Result<(), Box<dyn std::error::Error>
             let out_path = Path::new(out_dir).join(new_name);
             let mut out_file = File::create(&out_path)?;
             std::io::copy(&mut file, &mut out_file)?;
+            res += 1;
         }
     }
 
     std::fs::remove_file(zip_path)?;
 
-    Ok(())
+    Ok(res)
 }

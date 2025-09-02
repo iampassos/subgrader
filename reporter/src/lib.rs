@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::Serialize;
 
 use classroom::models::Student;
@@ -6,6 +8,8 @@ use classroom::models::Student;
 struct Record {
     name: String,
     email: String,
+    #[serde(rename = "score percent")]
+    score_percent: f32,
     comments: String,
 }
 
@@ -14,6 +18,7 @@ pub struct SubmissionResult {
     pub student: Student,
     pub comments: Vec<String>,
     pub errors: Vec<SubmissionError>,
+    pub solved: i32,
 }
 
 #[derive(Debug)]
@@ -26,6 +31,10 @@ pub enum SubmissionError {
     ZipError,
     Late,
     EmptyFile(String),
+    NoBeecrowd,
+    NoBeecrowdSubmission,
+    IncompleteBeecrowdSubmission,
+    IncompleteClassroomSubmission,
 }
 
 impl SubmissionError {
@@ -46,17 +55,25 @@ impl SubmissionError {
             }
             SubmissionError::ZipError => "ERROR WHILE EXTRACTING ZIP".to_string(),
             SubmissionError::Late => "LATE SUBMISSION".to_string(),
+            SubmissionError::NoBeecrowd => "NOT LISTED IN BEECROWD CLASS".to_string(),
+            SubmissionError::NoBeecrowdSubmission => "NO BEECROWD SUBMISSION".to_string(),
+            SubmissionError::IncompleteBeecrowdSubmission => {
+                "INCOMPLETE BEECROWD SUBMISSION".to_string()
+            }
+            SubmissionError::IncompleteClassroomSubmission => {
+                "INCOMPLETE CLASSROOM SUBMISSION".to_string()
+            }
         }
     }
 }
 
 pub fn generate_report(
-    results: Vec<SubmissionResult>,
+    results: HashMap<String, SubmissionResult>,
     path: &str,
-) -> Result<Vec<SubmissionResult>, Box<dyn std::error::Error>> {
+) -> Result<HashMap<String, SubmissionResult>, Box<dyn std::error::Error>> {
     let mut wtr = csv::Writer::from_path(path)?;
 
-    for result in &results {
+    for result in results.values() {
         let mut comments = result.comments.join(", ");
 
         let errors = result
@@ -64,7 +81,7 @@ pub fn generate_report(
             .iter()
             .map(|e| e.message())
             .collect::<Vec<_>>()
-            .join(", ");
+            .join("\n");
 
         if !errors.is_empty() {
             if !comments.is_empty() {
@@ -76,6 +93,7 @@ pub fn generate_report(
         wtr.serialize(Record {
             name: result.student.profile.name.full_name.clone(),
             email: result.student.profile.email_address.clone(),
+            score_percent: 1.0,
             comments,
         })?;
     }

@@ -175,6 +175,7 @@ version = "0.1.0"
 dependencies = [
  "classroom",
  "colored",
+ "csv",
  "dialoguer",
  "futures",
  "futures-util",
@@ -183,6 +184,7 @@ dependencies = [
  "regex",
  "reporter",
  "reqwest",
+ "serde",
  "similarity",
  "tokio",
  "zip",

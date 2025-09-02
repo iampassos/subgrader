@@ -2,6 +2,7 @@ use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use std::{
+    collections::HashMap,
     fs,
     sync::{Arc, Mutex},
     time::Instant,
@@ -13,8 +14,8 @@ use similarity::{AnalyzedFile, analyze_code, compare_two_codes_cached};
 pub fn similarity_analyzer(
     course_id: &str,
     assignment_id: &str,
-    mut results: Vec<SubmissionResult>,
-) -> Result<Vec<SubmissionResult>, Box<dyn std::error::Error>> {
+    mut results: HashMap<String, SubmissionResult>,
+) -> Result<HashMap<String, SubmissionResult>, Box<dyn std::error::Error>> {
     let started = Instant::now();
 
     println!(
@@ -47,10 +48,7 @@ pub fn similarity_analyzer(
             email.truncate(email.len() - 2);
 
             if content.trim().is_empty() {
-                if let Some(r) = results
-                    .iter_mut()
-                    .find(|r| *r.student.profile.email_address == email)
-                {
+                if let Some(r) = results.get_mut(&email) {
                     r.errors
                         .push(SubmissionError::EmptyFile(file_name.to_string()));
 
@@ -97,7 +95,7 @@ pub fn similarity_analyzer(
 }
 
 fn worker(
-    results: &Arc<Mutex<Vec<SubmissionResult>>>,
+    results: &Arc<Mutex<HashMap<String, SubmissionResult>>>,
     bar: &ProgressBar,
     p1: &Arc<(String, String, AnalyzedFile)>,
     p2: &Arc<(String, String, AnalyzedFile)>,
@@ -107,10 +105,7 @@ fn worker(
     if res >= 1.0 {
         let mut lock = results.lock().unwrap();
 
-        if let Some(r) = lock
-            .iter_mut()
-            .find(|r| *r.student.profile.email_address == p1.0)
-        {
+        if let Some(r) = lock.get_mut(&p1.0) {
             r.errors.push(SubmissionError::PlagiarismDetected(
                 p1.1.clone(),
                 p2.1.clone(),
@@ -118,10 +113,7 @@ fn worker(
             ));
         }
 
-        if let Some(r) = lock
-            .iter_mut()
-            .find(|r| *r.student.profile.email_address == p2.0)
-        {
+        if let Some(r) = lock.get_mut(&p2.0) {
             r.errors.push(SubmissionError::PlagiarismDetected(
                 p2.1.clone(),
                 p1.1.clone(),

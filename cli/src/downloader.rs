@@ -18,8 +18,8 @@ pub async fn download_classroom_submissions(
     api: Arc<ClassroomApi>,
     course_id: &str,
     assignment_id: &str,
-    mut results: Vec<SubmissionResult>,
-) -> Result<Vec<SubmissionResult>, Box<dyn std::error::Error>> {
+    mut results: HashMap<String, SubmissionResult>,
+) -> Result<HashMap<String, SubmissionResult>, Box<dyn std::error::Error>> {
     let started = Instant::now();
 
     println!(
@@ -52,18 +52,30 @@ pub async fn download_classroom_submissions(
                     return true;
                 }
 
-                results.push(SubmissionResult {
-                    student: students.get(&s.user_id).unwrap().clone(),
-                    errors: vec![SubmissionError::InvalidSubmission],
-                    comments: vec![],
-                });
+                let std = students.get(&s.user_id).unwrap().clone();
+
+                results.insert(
+                    std.profile.email_address.to_string(),
+                    SubmissionResult {
+                        student: std,
+                        errors: vec![SubmissionError::InvalidSubmission],
+                        comments: vec![],
+                        solved: 0,
+                    },
+                );
             }
 
-            results.push(SubmissionResult {
-                student: students.get(&s.user_id).unwrap().clone(),
-                errors: vec![SubmissionError::NoSubmission],
-                comments: vec![],
-            });
+            let std = students.get(&s.user_id).unwrap().clone();
+
+            results.insert(
+                std.profile.email_address,
+                SubmissionResult {
+                    student: students.get(&s.user_id).unwrap().clone(),
+                    errors: vec![SubmissionError::NoSubmission],
+                    comments: vec![],
+                    solved: 0,
+                },
+            );
 
             false
         })
@@ -124,7 +136,11 @@ pub async fn download_classroom_submissions(
         })
         .collect();
 
-    results.extend(task_results);
+    results.extend(
+        task_results
+            .into_iter()
+            .map(|s| (s.student.profile.email_address.to_string(), s)),
+    );
 
     bar.finish();
 
@@ -172,8 +188,25 @@ async fn worker(
     };
 
     let mut errors = vec![];
+    let mut solved = 0;
 
-    if !is_zip {
+    if is_zip {
+        let res = crate::utils::unzip_submission(&path_assignment);
+
+        match res {
+            Ok(num) => solved = num,
+            Err(e) => {
+                bar.println(format!(
+                    " :: {} {} ({}) {}",
+                    "Error".red().bold(),
+                    student.profile.name.full_name.clone().bold(),
+                    student.profile.email_address.clone().bold(),
+                    e
+                ));
+                errors.push(SubmissionError::ZipError);
+            }
+        }
+    } else {
         bar.println(format!(
             " :: {} {} ({}) invalid zip",
             "Error".red().bold(),
@@ -181,15 +214,6 @@ async fn worker(
             student.profile.email_address.clone().bold()
         ));
         errors.push(SubmissionError::InvalidZip);
-    } else if let Err(e) = crate::utils::unzip_submission(&path_assignment) {
-        bar.println(format!(
-            " :: {} {} ({}) {}",
-            "Error".red().bold(),
-            student.profile.name.full_name.clone().bold(),
-            student.profile.email_address.clone().bold(),
-            e
-        ));
-        errors.push(SubmissionError::ZipError);
     }
 
     if late {
@@ -208,5 +232,6 @@ async fn worker(
         student: student.clone(),
         errors,
         comments: vec![],
+        solved,
     })
 }
