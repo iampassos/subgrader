@@ -40,13 +40,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         success_suffix: style("·".to_string()).for_stderr().black().bright(),
         prompt_prefix: style(" ::".to_string()).for_stderr().green().bold(),
         prompt_style: Style::new().for_stderr().white(),
+        error_prefix: style(" ::".to_string()).for_stderr().red(),
         ..ColorfulTheme::default()
     };
 
     let selection = Select::with_theme(&own_theme)
         .with_prompt("Select the course")
         .default(0)
-        .max_length(5)
+        .max_length(3)
         .items(&course_selection[..])
         .interact()
         .unwrap();

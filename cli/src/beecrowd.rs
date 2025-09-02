@@ -9,9 +9,6 @@ struct Record {
     email: String,
     exercises: i32,
     solved: i32,
-    score: i32,
-    #[serde(rename = "total score")]
-    total_score: i32,
 }
 
 pub fn beecrowd_report_parser(
