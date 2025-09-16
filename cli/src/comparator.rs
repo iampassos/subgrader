@@ -15,6 +15,7 @@ pub fn similarity_analyzer(
     course_id: &str,
     assignment_id: &str,
     mut results: HashMap<String, SubmissionResult>,
+    threshold: u32,
 ) -> Result<HashMap<String, SubmissionResult>, Box<dyn std::error::Error>> {
     let started = Instant::now();
 
@@ -79,7 +80,7 @@ pub fn similarity_analyzer(
                 .map(|j| (Arc::clone(&file_contents[i]), Arc::clone(&file_contents[j])))
                 .collect::<Vec<_>>()
         })
-        .for_each(|(p1, p2)| worker(&results, &bar, &p1, &p2));
+        .for_each(|(p1, p2)| worker(&results, &bar, &p1, &p2, threshold));
 
     bar.finish();
 
@@ -97,10 +98,11 @@ fn worker(
     bar: &ProgressBar,
     p1: &Arc<(String, String, AnalyzedFile)>,
     p2: &Arc<(String, String, AnalyzedFile)>,
+    threshold: u32,
 ) {
     let res = compare_two_codes_cached(&p1.2, &p2.2);
 
-    if res >= 1.0 {
+    if res >= threshold as f32 / 100.0 {
         let mut lock = results.lock().unwrap();
 
         if let Some(r) = lock.get_mut(&p1.0) {

@@ -78,12 +78,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .interact()
         .unwrap();
 
-    let mut input: Result<String, dialoguer::Error> = Result::Ok(String::new());
+    let mut input_file: Result<String, dialoguer::Error> = Result::Ok(String::new());
 
     if selections.contains(&1) {
         let completion = FilePathCompleter::default();
 
-        input = Input::<String>::with_theme(&own_theme)
+        input_file = Input::<String>::with_theme(&own_theme)
             .with_prompt("Beecrowd report .csv file-name")
             .completion_with(&completion)
             .validate_with(|input: &String| -> Result<(), &str> {
@@ -102,16 +102,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .interact_text();
     }
 
+    let mut input_thr: Result<u32, dialoguer::Error> = Result::Ok(100);
+
+    if selections.contains(&0) {
+        input_thr = Input::<u32>::with_theme(&own_theme)
+            .with_prompt("Similarity threshold (%)")
+            .validate_with(|input: &u32| -> Result<(), &str> {
+                if *input <= 100 {
+                    Ok(())
+                } else {
+                    Err("Invalid percentage threshold")
+                }
+            })
+            .default(100)
+            .show_default(true)
+            .allow_empty(false)
+            .interact_text();
+    }
+
     let mut results: HashMap<String, SubmissionResult> = HashMap::new();
 
     results = download_classroom_submissions(api.clone(), &course.id, &work.id, results).await?;
 
     if selections.contains(&0) {
-        results = similarity_analyzer(&course.id, &work.id, results)?;
+        if let Ok(thr) = input_thr {
+            results = similarity_analyzer(&course.id, &work.id, results, thr)?;
+        }
     }
 
     if selections.contains(&1) {
-        if let Ok(file) = input {
+        if let Ok(file) = input_file {
             results = beecrowd_report_parser(results, Path::new(&file)).unwrap();
         }
     }
