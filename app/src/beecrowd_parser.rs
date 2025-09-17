@@ -1,4 +1,3 @@
-use colored::Colorize;
 use serde::Deserialize;
 use std::{collections::HashMap, fs::File, path::Path};
 
@@ -52,11 +51,6 @@ pub fn beecrowd_report_parser(
             }
         }
     }
-
-    println!(
-        " :: {} parsing and checking Beecrowd report",
-        "Finished".green().bold(),
-    );
 
     Ok(())
 }

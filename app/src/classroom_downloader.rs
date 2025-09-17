@@ -1,6 +1,4 @@
-use colored::Colorize;
 use futures_util::StreamExt;
-use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 
 use std::{collections::HashMap, path::Path, sync::Arc, time::Instant};
 use tokio::{
@@ -10,37 +8,16 @@ use tokio::{
 
 use classroom::{
     api::ClassroomApi,
-    models::{Attachment, Student, StudentSubmission, SubmissionState},
+    models::{Attachment, Student, StudentSubmission, StudentSubmissions, SubmissionState},
 };
 use reporter::{SubmissionError, SubmissionResult};
 
-pub async fn download_classroom_submissions(
-    api: Arc<ClassroomApi>,
-    course_id: &str,
-    assignment_id: &str,
+pub fn validate_submissions(
+    students: &Arc<HashMap<String, Student>>,
+    submissions: StudentSubmissions,
     results: &mut HashMap<String, SubmissionResult>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let started = Instant::now();
-
-    println!(
-        " :: {} all students and submissions [CID {course_id}/AID {assignment_id}]",
-        "Fetching".green().bold()
-    );
-
-    let students = api.list_students(course_id).await?;
-    let students: Arc<HashMap<String, _>> = Arc::new(
-        students
-            .students
-            .into_iter()
-            .map(|s| (s.user_id.clone(), s))
-            .collect(),
-    );
-
-    let submissions = api
-        .get_student_submissions(course_id, assignment_id)
-        .await?;
-
-    let valid_submissions: Vec<StudentSubmission> = submissions
+) -> Vec<StudentSubmission> {
+    submissions
         .student_submissions
         .into_iter()
         .filter(|s| {
@@ -79,25 +56,35 @@ pub async fn download_classroom_submissions(
 
             false
         })
-        .collect();
+        .collect::<Vec<StudentSubmission>>()
+}
+
+pub async fn download_classroom_submissions(
+    api: Arc<ClassroomApi>,
+    course_id: &str,
+    assignment_id: &str,
+    results: &mut HashMap<String, SubmissionResult>,
+) -> Result<f32, Box<dyn std::error::Error>> {
+    let started = Instant::now();
+
+    let students = api.list_students(course_id).await?;
+    let students: Arc<HashMap<String, _>> = Arc::new(
+        students
+            .students
+            .into_iter()
+            .map(|s| (s.user_id.clone(), s))
+            .collect(),
+    );
+
+    let submissions = api
+        .get_student_submissions(course_id, assignment_id)
+        .await?;
+
+    let valid_submissions = validate_submissions(&students, submissions, results);
 
     if valid_submissions.is_empty() {
-        println!(
-            " :: {} no valid submissions were downloaded",
-            "Error".red().bold()
-        );
-        return Err("No valid submissions".into());
+        return Err("no valid submissions were downloaded".into());
     }
-
-    let bar = Arc::new(ProgressBar::new(valid_submissions.len() as u64));
-    bar.set_draw_target(ProgressDrawTarget::stdout_with_hz(1));
-    bar.set_style(
-        ProgressStyle::with_template(
-            " ::{prefix:>12.cyan.bold} [{bar:57}] {pos}/{len} {percent}%",
-        )?
-        .progress_chars("## "),
-    );
-    bar.set_prefix("Downloading");
 
     let path = format!("./submissions/{course_id}/{assignment_id}");
     let dir = Path::new(&path);
@@ -115,7 +102,6 @@ pub async fn download_classroom_submissions(
         for att in sub.attachments.unwrap() {
             let api = Arc::clone(&api);
             let students = Arc::clone(&students);
-            let bar = Arc::clone(&bar);
 
             let path = path.clone();
             let user_id = submission.user_id.clone();
@@ -125,7 +111,6 @@ pub async fn download_classroom_submissions(
                     att,
                     api,
                     students,
-                    bar,
                     path,
                     user_id,
                     submission.late.unwrap_or(false),
@@ -150,22 +135,13 @@ pub async fn download_classroom_submissions(
             .map(|s| (s.student.profile.email_address.to_string(), s)),
     );
 
-    bar.finish();
-
-    println!(
-        " :: {} and formatted all submissions in {:.2}s",
-        "Finished".green().bold(),
-        Instant::now().duration_since(started).as_secs_f32()
-    );
-
-    Ok(())
+    Ok(Instant::now().duration_since(started).as_secs_f32())
 }
 
 async fn worker(
     att: Attachment,
     api: Arc<ClassroomApi>,
     students: Arc<HashMap<String, Student>>,
-    bar: Arc<ProgressBar>,
     path: String,
     user_id: String,
     late: bool,
@@ -214,8 +190,6 @@ async fn worker(
     if late {
         errors.push(SubmissionError::Late);
     }
-
-    bar.inc(1);
 
     Ok(SubmissionResult {
         student: student.clone(),

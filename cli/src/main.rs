@@ -6,16 +6,12 @@ use dialoguer::{
 };
 use std::{collections::HashMap, path::Path, sync::Arc};
 
-use beecrowd::beecrowd_report_parser;
+use app::{
+    beecrowd_parser::beecrowd_report_parser, classroom_downloader::download_classroom_submissions,
+    similarity_checker::similarity_analyzer,
+};
 use classroom::{api::ClassroomApi, client::ClassroomClient};
-use comparator::similarity_analyzer;
-use downloader::download_classroom_submissions;
 use reporter::{SubmissionResult, generate_report};
-
-mod beecrowd;
-mod comparator;
-mod downloader;
-mod utils;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -124,18 +120,49 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut results: HashMap<String, SubmissionResult> = HashMap::new();
 
+    println!(
+        " :: {} all students and submissions [CID {}/AID {}]",
+        "Fetching".green().bold(),
+        course.id,
+        work.id
+    );
+
     let download_res =
         download_classroom_submissions(api.clone(), &course.id, &work.id, &mut results).await;
 
-    if download_res.is_ok() {
+    if let Err(e) = download_res {
+        println!(" :: {} {e}", "Error".red().bold());
+    } else if let Ok(s) = download_res {
+        println!(
+            " :: {} and formatted all submissions in {:.2}s",
+            "Finished".green().bold(),
+            s
+        );
+
         if selections.contains(&0) {
             if let Ok(thr) = input_thr {
-                similarity_analyzer(&course.id, &work.id, &mut results, thr)?;
+                println!(
+                    " :: {} all files and generating pairs",
+                    "Loading".green().bold()
+                );
+
+                let similarity_res = similarity_analyzer(&course.id, &work.id, &mut results, thr)?;
+
+                println!(
+                    " :: {} and analyzed all submissions in {:.2}s",
+                    "Finished".green().bold(),
+                    similarity_res
+                );
             }
         }
 
         if selections.contains(&1) {
             beecrowd_report_parser(&mut results, Path::new(&input_file)).unwrap();
+
+            println!(
+                " :: {} parsing and checking Beecrowd report",
+                "Finished".green().bold(),
+            );
         }
 
         if selections.contains(&2) {

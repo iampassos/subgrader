@@ -1,5 +1,3 @@
-use colored::Colorize;
-use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use std::{
     collections::HashMap,
@@ -16,13 +14,8 @@ pub fn similarity_analyzer(
     assignment_id: &str,
     results: &mut HashMap<String, SubmissionResult>,
     threshold: u32,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<f32, Box<dyn std::error::Error>> {
     let started = Instant::now();
-
-    println!(
-        " :: {} all files and generating pairs",
-        "Loading".green().bold()
-    );
 
     let path_or = format!("./submissions/{course_id}/{assignment_id}");
 
@@ -62,15 +55,6 @@ pub fn similarity_analyzer(
         })
         .collect();
 
-    let bar = ProgressBar::new(((file_contents.len() * (file_contents.len() - 1)) / 2) as u64);
-    bar.set_style(
-        ProgressStyle::with_template(
-            " ::{prefix:>10.cyan.bold} [{bar:57}] {pos}/{len} {percent}%",
-        )?
-        .progress_chars("## "),
-    );
-    bar.set_prefix("Analyzing");
-
     let res = Arc::new(Mutex::new(results));
 
     (0..file_contents.len())
@@ -81,22 +65,13 @@ pub fn similarity_analyzer(
                 .into_par_iter()
                 .map(move |j| (Arc::clone(&file_contents[i]), Arc::clone(&file_contents[j])))
         })
-        .for_each(|(p1, p2)| worker(Arc::clone(&res), &bar, &p1, &p2, threshold));
+        .for_each(|(p1, p2)| worker(Arc::clone(&res), &p1, &p2, threshold));
 
-    bar.finish();
-
-    println!(
-        " :: {} and analyzed all submissions in {:.2}s",
-        "Finished".green().bold(),
-        Instant::now().duration_since(started).as_secs_f32()
-    );
-
-    Ok(())
+    Ok(Instant::now().duration_since(started).as_secs_f32())
 }
 
 fn worker(
     results: Arc<Mutex<&mut HashMap<String, SubmissionResult>>>,
-    bar: &ProgressBar,
     p1: &Arc<(String, String, AnalyzedFile)>,
     p2: &Arc<(String, String, AnalyzedFile)>,
     threshold: u32,
@@ -122,6 +97,4 @@ fn worker(
             ));
         }
     }
-
-    bar.inc(1);
 }
