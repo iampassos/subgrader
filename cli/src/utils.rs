@@ -1,9 +1,4 @@
-use std::{
-    fs::{self, File},
-    path::Path,
-};
-
-use dialoguer::Completion;
+use std::{fs::File, path::Path};
 
 pub fn unzip_submission(zip_path: &str) -> Result<i32, Box<dyn std::error::Error>> {
     let zip_file = File::open(zip_path)?;
@@ -57,37 +52,4 @@ pub fn unzip_submission(zip_path: &str) -> Result<i32, Box<dyn std::error::Error
     std::fs::remove_file(zip_path)?;
 
     Ok(res)
-}
-
-#[derive(Default)]
-pub struct FilePathCompleter {}
-
-impl Completion for FilePathCompleter {
-    fn get(&self, input: &str) -> Option<String> {
-        let path = Path::new(input);
-
-        let dir = if path.is_dir() {
-            path
-        } else {
-            path.parent().unwrap_or_else(|| Path::new("."))
-        };
-
-        if let Ok(entries) = fs::read_dir(dir) {
-            let mut matches = Vec::new();
-
-            for entry in entries.flatten() {
-                if let Some(name) = entry.file_name().to_str() {
-                    if name.starts_with(path.file_name().and_then(|s| s.to_str()).unwrap_or("")) {
-                        matches.push(name.to_string());
-                    }
-                }
-            }
-
-            if matches.len() == 1 {
-                return Some(dir.join(&matches[0]).to_string_lossy().into_owned());
-            }
-        }
-
-        None
-    }
 }

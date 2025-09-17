@@ -5,7 +5,6 @@ use dialoguer::{
     theme::ColorfulTheme,
 };
 use std::{collections::HashMap, path::Path, sync::Arc};
-use utils::FilePathCompleter;
 
 use beecrowd::beecrowd_report_parser;
 use classroom::{api::ClassroomApi, client::ClassroomClient};
@@ -78,28 +77,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .interact()
         .unwrap();
 
-    let mut input_file: Result<String, dialoguer::Error> = Result::Ok(String::new());
+    let mut input_file = String::new();
 
     if selections.contains(&1) {
-        let completion = FilePathCompleter::default();
-
-        input_file = Input::<String>::with_theme(&own_theme)
-            .with_prompt("Beecrowd report .csv file-name")
-            .completion_with(&completion)
-            .validate_with(|input: &String| -> Result<(), &str> {
-                let path = Path::new(&input);
-                if path.exists()
-                    && input != "./"
-                    && path.extension().unwrap().to_string_lossy() == "csv"
-                {
-                    Ok(())
+        let files: Vec<_> = std::fs::read_dir(".")
+            .unwrap()
+            .filter_map(|entry| {
+                let entry = entry.ok()?;
+                let name = entry.file_name().into_string().ok()?;
+                if name.ends_with(".csv") {
+                    Some(name)
                 } else {
-                    Err("File doesn't exist or isn't csv")
+                    None
                 }
             })
-            .with_initial_text("./")
-            .allow_empty(false)
-            .interact_text();
+            .collect();
+
+        let selection = Select::with_theme(&own_theme)
+            .with_prompt("Beecrowd report .csv file-name")
+            .default(0)
+            .max_length(5)
+            .items(&files)
+            .interact()
+            .unwrap();
+
+        input_file.clone_from(&files[selection]);
     }
 
     let mut input_thr: Result<u32, dialoguer::Error> = Result::Ok(100);
@@ -122,30 +124,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut results: HashMap<String, SubmissionResult> = HashMap::new();
 
-    results = download_classroom_submissions(api.clone(), &course.id, &work.id, results).await?;
+    let download_res =
+        download_classroom_submissions(api.clone(), &course.id, &work.id, &mut results).await;
 
-    if selections.contains(&0) {
-        if let Ok(thr) = input_thr {
-            results = similarity_analyzer(&course.id, &work.id, results, thr)?;
+    if download_res.is_ok() {
+        if selections.contains(&0) {
+            if let Ok(thr) = input_thr {
+                similarity_analyzer(&course.id, &work.id, &mut results, thr)?;
+            }
         }
-    }
 
-    if selections.contains(&1) {
-        if let Ok(file) = input_file {
-            results = beecrowd_report_parser(results, Path::new(&file)).unwrap();
+        if selections.contains(&1) {
+            beecrowd_report_parser(&mut results, Path::new(&input_file)).unwrap();
         }
-    }
 
-    if selections.contains(&2) {
-        let path = format!("./submissions/{}/{}/report.csv", course.id, work.id);
+        if selections.contains(&2) {
+            let path = format!("./submissions/{}/{}/report.csv", course.id, work.id);
 
-        generate_report(results, &path)?;
+            generate_report(results, &path)?;
 
-        println!(
-            " :: {} student report at {}",
-            "Generated".green().bold(),
-            path
-        );
+            println!(
+                " :: {} student report at {}",
+                "Generated".green().bold(),
+                path
+            );
+        }
     }
 
     Ok(())

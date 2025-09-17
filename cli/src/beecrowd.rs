@@ -12,9 +12,9 @@ struct Record {
 }
 
 pub fn beecrowd_report_parser(
-    mut results: HashMap<String, SubmissionResult>,
+    results: &mut HashMap<String, SubmissionResult>,
     path: &Path,
-) -> Result<HashMap<String, SubmissionResult>, Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error>> {
     let file = File::open(path)?;
     let mut rdr = csv::Reader::from_reader(file);
 
@@ -58,5 +58,5 @@ pub fn beecrowd_report_parser(
         "Finished".green().bold(),
     );
 
-    Ok(results)
+    Ok(())
 }

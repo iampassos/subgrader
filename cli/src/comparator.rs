@@ -14,9 +14,9 @@ use similarity::{AnalyzedFile, analyze_code, compare_two_codes_cached};
 pub fn similarity_analyzer(
     course_id: &str,
     assignment_id: &str,
-    mut results: HashMap<String, SubmissionResult>,
+    results: &mut HashMap<String, SubmissionResult>,
     threshold: u32,
-) -> Result<HashMap<String, SubmissionResult>, Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error>> {
     let started = Instant::now();
 
     println!(
@@ -90,11 +90,11 @@ pub fn similarity_analyzer(
         Instant::now().duration_since(started).as_secs_f32()
     );
 
-    Ok(Arc::try_unwrap(results).unwrap().into_inner().unwrap())
+    Ok(())
 }
 
 fn worker(
-    results: &Arc<Mutex<HashMap<String, SubmissionResult>>>,
+    results: &Arc<Mutex<&mut HashMap<String, SubmissionResult>>>,
     bar: &ProgressBar,
     p1: &Arc<(String, String, AnalyzedFile)>,
     p2: &Arc<(String, String, AnalyzedFile)>,

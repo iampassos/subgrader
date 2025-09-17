@@ -18,8 +18,8 @@ pub async fn download_classroom_submissions(
     api: Arc<ClassroomApi>,
     course_id: &str,
     assignment_id: &str,
-    mut results: HashMap<String, SubmissionResult>,
-) -> Result<HashMap<String, SubmissionResult>, Box<dyn std::error::Error>> {
+    results: &mut HashMap<String, SubmissionResult>,
+) -> Result<(), Box<dyn std::error::Error>> {
     let started = Instant::now();
 
     println!(
@@ -80,6 +80,14 @@ pub async fn download_classroom_submissions(
             false
         })
         .collect();
+
+    if valid_submissions.is_empty() {
+        println!(
+            " :: {} no valid submissions were downloaded",
+            "Error".red().bold()
+        );
+        return Err("No valid submissions".into());
+    }
 
     let bar = Arc::new(ProgressBar::new(valid_submissions.len() as u64));
     bar.set_draw_target(ProgressDrawTarget::stdout_with_hz(1));
@@ -150,7 +158,7 @@ pub async fn download_classroom_submissions(
         Instant::now().duration_since(started).as_secs_f32()
     );
 
-    Ok(results)
+    Ok(())
 }
 
 async fn worker(
