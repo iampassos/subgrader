@@ -71,16 +71,17 @@ pub fn similarity_analyzer(
     );
     bar.set_prefix("Analyzing");
 
-    let results = Arc::new(Mutex::new(results));
+    let res = Arc::new(Mutex::new(results));
 
     (0..file_contents.len())
         .into_par_iter()
         .flat_map(|i| {
+            let file_contents = &file_contents;
             ((i + 1)..file_contents.len())
-                .map(|j| (Arc::clone(&file_contents[i]), Arc::clone(&file_contents[j])))
-                .collect::<Vec<_>>()
+                .into_par_iter()
+                .map(move |j| (Arc::clone(&file_contents[i]), Arc::clone(&file_contents[j])))
         })
-        .for_each(|(p1, p2)| worker(&results, &bar, &p1, &p2, threshold));
+        .for_each(|(p1, p2)| worker(Arc::clone(&res), &bar, &p1, &p2, threshold));
 
     bar.finish();
 
@@ -94,7 +95,7 @@ pub fn similarity_analyzer(
 }
 
 fn worker(
-    results: &Arc<Mutex<&mut HashMap<String, SubmissionResult>>>,
+    results: Arc<Mutex<&mut HashMap<String, SubmissionResult>>>,
     bar: &ProgressBar,
     p1: &Arc<(String, String, AnalyzedFile)>,
     p2: &Arc<(String, String, AnalyzedFile)>,
