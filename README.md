@@ -7,8 +7,6 @@
 - **Detecting** plagiarism and code similarity between submissions
 - **Generating** a detailed report with results
 
-------------------------------------------------------------------------
-
 ## Quick Start
 
 1.  **Clone the repository**
@@ -33,9 +31,8 @@
     > cargo run --release
     ```
 
-------------------------------------------------------------------------
-
 ## Notes
 
 -   Requires a valid Google Classroom API setup to download assignments.
 -   Reports will include formatting errors, empty files, and detected plagiarism.
+
