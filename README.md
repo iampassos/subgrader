@@ -7,8 +7,6 @@
 - **Detecting** plagiarism and code similarity between submissions
 - **Generating** a detailed report with results
 
-------------------------------------------------------------------------
-
 ## Quick Start
 
 1.  **Clone the repository**
@@ -32,8 +30,6 @@
     ``` bash
     > cargo run --release
     ```
-
-------------------------------------------------------------------------
 
 ## Notes
 
