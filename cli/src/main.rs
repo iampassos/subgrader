@@ -73,7 +73,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .interact()
         .unwrap();
 
-    let mut input_file = String::new();
+    let mut input_file = None;
 
     if selections.contains(&1) {
         let files: Vec<_> = std::fs::read_dir(".")
@@ -89,15 +89,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             })
             .collect();
 
-        let selection = Select::with_theme(&own_theme)
-            .with_prompt("Beecrowd report .csv file-name")
-            .default(0)
-            .max_length(5)
-            .items(&files)
-            .interact()
-            .unwrap();
+        if files.is_empty() {
+            println!(
+                " :: {} no .csv files found in project root",
+                "Error".red().bold()
+            );
+        } else {
+            let selection = Select::with_theme(&own_theme)
+                .with_prompt("Beecrowd report .csv file-name")
+                .default(0)
+                .max_length(5)
+                .items(&files)
+                .interact()
+                .unwrap();
 
-        input_file.clone_from(&files[selection]);
+            input_file = Some(files[selection].clone());
+        }
     }
 
     let mut input_thr: Result<u32, dialoguer::Error> = Result::Ok(100);
@@ -157,12 +164,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         if selections.contains(&1) {
-            beecrowd_report_parser(&mut results, Path::new(&input_file)).unwrap();
+            if let Some(f) = input_file {
+                beecrowd_report_parser(&mut results, Path::new(&f)).unwrap();
 
-            println!(
-                " :: {} parsing and checking Beecrowd report",
-                "Finished".green().bold(),
-            );
+                println!(
+                    " :: {} parsing and checking Beecrowd report",
+                    "Finished".green().bold(),
+                );
+            }
         }
 
         if selections.contains(&2) {
