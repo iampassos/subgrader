@@ -70,7 +70,7 @@ impl SubmissionError {
 pub fn generate_report(
     results: HashMap<String, SubmissionResult>,
     path: &str,
-) -> Result<HashMap<String, SubmissionResult>, Box<dyn std::error::Error>> {
+) -> Result<HashMap<String, SubmissionResult>, Box<dyn std::error::Error + Send + Sync>> {
     let mut wtr = csv::Writer::from_path(path)?;
 
     for result in results.values() {

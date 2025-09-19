@@ -5,16 +5,24 @@ use std::{
     sync::{Arc, Mutex},
     time::Instant,
 };
+use tokio::sync::mpsc::Sender;
 
 use reporter::{SubmissionError, SubmissionResult};
 use similarity::{AnalyzedFile, analyze_code, compare_two_codes_cached};
 
-pub fn similarity_analyzer(
+pub enum SimilarityEvent {
+    Start(u64),
+    Progress(u64),
+    End(f32),
+}
+
+pub async fn similarity_analyzer(
     course_id: &str,
     assignment_id: &str,
     results: &mut HashMap<String, SubmissionResult>,
     threshold: u32,
-) -> Result<f32, Box<dyn std::error::Error>> {
+    tx: Sender<SimilarityEvent>,
+) -> Result<f32, Box<dyn std::error::Error + Send + Sync>> {
     let started = Instant::now();
 
     let path_or = format!("./submissions/{course_id}/{assignment_id}");
@@ -57,6 +65,11 @@ pub fn similarity_analyzer(
 
     let res = Arc::new(Mutex::new(results));
 
+    tx.send(SimilarityEvent::Start(
+        ((file_contents.len() * (file_contents.len() - 1)) / 2) as u64,
+    ))
+    .await?;
+
     (0..file_contents.len())
         .into_par_iter()
         .flat_map(|i| {
@@ -65,9 +78,13 @@ pub fn similarity_analyzer(
                 .into_par_iter()
                 .map(move |j| (Arc::clone(&file_contents[i]), Arc::clone(&file_contents[j])))
         })
-        .for_each(|(p1, p2)| worker(Arc::clone(&res), &p1, &p2, threshold));
+        .for_each(|(p1, p2)| worker(Arc::clone(&res), &p1, &p2, threshold, tx.clone()));
 
-    Ok(Instant::now().duration_since(started).as_secs_f32())
+    let total_time = Instant::now().duration_since(started).as_secs_f32();
+
+    tx.send(SimilarityEvent::End(total_time)).await?;
+
+    Ok(total_time)
 }
 
 fn worker(
@@ -75,6 +92,7 @@ fn worker(
     p1: &Arc<(String, String, AnalyzedFile)>,
     p2: &Arc<(String, String, AnalyzedFile)>,
     threshold: u32,
+    tx: Sender<SimilarityEvent>,
 ) {
     let res = compare_two_codes_cached(&p1.2, &p2.2);
 
@@ -97,4 +115,6 @@ fn worker(
             ));
         }
     }
+
+    tx.blocking_send(SimilarityEvent::Progress(1)).unwrap();
 }

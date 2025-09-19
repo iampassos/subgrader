@@ -4,17 +4,20 @@ use dialoguer::{
     console::{Style, style},
     theme::ColorfulTheme,
 };
+use indicatif::{ProgressBar, ProgressStyle};
 use std::{collections::HashMap, path::Path, sync::Arc};
+use tokio::sync::{Mutex, mpsc};
 
 use app::{
-    beecrowd_parser::beecrowd_report_parser, classroom_downloader::download_classroom_submissions,
-    similarity_checker::similarity_analyzer,
+    beecrowd_parser::beecrowd_report_parser,
+    classroom_downloader::{DownloadEvent, download_classroom_submissions},
+    similarity_checker::{SimilarityEvent, similarity_analyzer},
 };
 use classroom::{api::ClassroomApi, client::ClassroomClient};
 use reporter::{SubmissionResult, generate_report};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut client = ClassroomClient::new();
     client.auth("./credentials.json").await?;
     let api = Arc::new(ClassroomApi::new(client));
@@ -125,7 +128,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .interact_text();
     }
 
-    let mut results: HashMap<String, SubmissionResult> = HashMap::new();
+    let results: Arc<Mutex<HashMap<String, SubmissionResult>>> =
+        Arc::new(Mutex::new(HashMap::new()));
 
     println!(
         " :: {} all students and submissions [CID {}/AID {}]",
@@ -134,57 +138,112 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         work.id
     );
 
-    let download_res =
-        download_classroom_submissions(api.clone(), &course.id, &work.id, &mut results).await;
+    let bar = ProgressBar::new(0);
+    bar.set_style(
+        ProgressStyle::with_template(
+            " ::{prefix:>12.cyan.bold} [{bar:57}] {pos}/{len} {percent}%",
+        )?
+        .progress_chars("## "),
+    );
 
-    if let Err(e) = download_res {
-        println!(" :: {} {e}", "Error".red().bold());
-    } else if let Ok(s) = download_res {
-        println!(
-            " :: {} and formatted all submissions in {:.2}s",
-            "Finished".green().bold(),
-            s
-        );
+    let (tx, mut rx) = mpsc::channel(100);
 
-        if selections.contains(&0) {
-            if let Ok(thr) = input_thr {
-                println!(
-                    " :: {} all files and generating pairs",
-                    "Loading".green().bold()
-                );
+    let cl = results.clone();
+    let cid = course.id.clone();
+    let wid = work.id.clone();
 
-                let similarity_res = similarity_analyzer(&course.id, &work.id, &mut results, thr)?;
+    tokio::spawn(async move {
+        let mut lock = cl.lock().await;
+        download_classroom_submissions(api.clone(), &cid, &wid, &mut lock, tx).await
+    });
 
-                println!(
-                    " :: {} and analyzed all submissions in {:.2}s",
-                    "Finished".green().bold(),
-                    similarity_res
-                );
+    let mut total_time = 0.0;
+
+    while let Some(e) = rx.recv().await {
+        match e {
+            DownloadEvent::Start(n) => {
+                bar.set_prefix("Downloading");
+                bar.set_length(n);
+            }
+            DownloadEvent::Progress(n) => bar.inc(n),
+            DownloadEvent::End(t) => {
+                total_time = t;
+                bar.finish();
             }
         }
+    }
 
-        if selections.contains(&1) {
-            if let Some(f) = input_file {
-                beecrowd_report_parser(&mut results, Path::new(&f)).unwrap();
+    println!(
+        " :: {} and formatted all submissions in {:.2}s",
+        "Finished".green().bold(),
+        total_time
+    );
 
-                println!(
-                    " :: {} parsing and checking Beecrowd report",
-                    "Finished".green().bold(),
-                );
+    if selections.contains(&0) {
+        if let Ok(thr) = input_thr {
+            println!(
+                " :: {} all files and generating pairs",
+                "Loading".green().bold()
+            );
+
+            let (tx, mut rx) = mpsc::channel(100);
+
+            let cl = results.clone();
+            let cid = course.id.clone();
+            let wid = work.id.clone();
+
+            tokio::spawn(async move {
+                let mut lock = cl.lock().await;
+                similarity_analyzer(&cid, &wid, &mut lock, thr, tx).await
+            });
+
+            let mut total_time = 0.0;
+            while let Some(e) = rx.recv().await {
+                match e {
+                    SimilarityEvent::Start(n) => {
+                        bar.reset();
+                        bar.set_prefix("Analyzing");
+                        bar.set_length(n);
+                    }
+                    SimilarityEvent::Progress(n) => bar.inc(n),
+                    SimilarityEvent::End(t) => {
+                        total_time = t;
+                        bar.finish();
+                    }
+                }
             }
-        }
-
-        if selections.contains(&2) {
-            let path = format!("./submissions/{}/{}/report.csv", course.id, work.id);
-
-            generate_report(results, &path)?;
 
             println!(
-                " :: {} student report at {}",
-                "Generated".green().bold(),
-                path
+                " :: {} and analyzed all submissions in {:.2}s",
+                "Finished".green().bold(),
+                total_time
             );
         }
+    }
+
+    let mut results = Arc::try_unwrap(results).unwrap().into_inner();
+
+    if selections.contains(&1) {
+        if let Some(f) = input_file {
+            beecrowd_report_parser(&mut results, Path::new(&f)).unwrap();
+
+            println!(
+                " :: {} parsing and checking Beecrowd report",
+                "Finished".green().bold(),
+            );
+        }
+    }
+
+    if selections.contains(&2) {
+        let path = format!("./submissions/{}/{}/report.csv", course.id, work.id);
+
+        generate_report(results, &path)?;
+
+        println!(
+            " :: {} student report at {}",
+            "Generated".green().bold(),
+            path
+        );
     }
 
     Ok(())

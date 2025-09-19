@@ -17,7 +17,7 @@ impl ClassroomApi {
         }
     }
 
-    pub async fn list_courses(&self) -> Result<Courses, Box<dyn std::error::Error>> {
+    pub async fn list_courses(&self) -> Result<Courses, Box<dyn std::error::Error + Send + Sync>> {
         let token = self.classroom_client.token().ok_or("Token not found")?;
 
         let resp = self
@@ -32,7 +32,10 @@ impl ClassroomApi {
         Ok(courses)
     }
 
-    pub async fn list_course(&self, course_id: &str) -> Result<Course, Box<dyn std::error::Error>> {
+    pub async fn list_course(
+        &self,
+        course_id: &str,
+    ) -> Result<Course, Box<dyn std::error::Error + Send + Sync>> {
         let token = self.classroom_client.token().ok_or("Token not found")?;
 
         let resp = self
@@ -52,7 +55,7 @@ impl ClassroomApi {
     pub async fn list_course_works(
         &self,
         course_id: &str,
-    ) -> Result<CourseWorks, Box<dyn std::error::Error>> {
+    ) -> Result<CourseWorks, Box<dyn std::error::Error + Send + Sync>> {
         let token = self.classroom_client.token().ok_or("Token not found")?;
 
         let resp = self
@@ -73,7 +76,7 @@ impl ClassroomApi {
         &self,
         course_id: &str,
         user_id: &str,
-    ) -> Result<Student, Box<dyn std::error::Error>> {
+    ) -> Result<Student, Box<dyn std::error::Error + Send + Sync>> {
         let token = self.classroom_client.token().ok_or("Token not found")?;
 
         let resp = self
@@ -93,7 +96,7 @@ impl ClassroomApi {
     pub async fn list_students(
         &self,
         course_id: &str,
-    ) -> Result<Students, Box<dyn std::error::Error>> {
+    ) -> Result<Students, Box<dyn std::error::Error + Send + Sync>> {
         let token = self.classroom_client.token().ok_or("Token not found")?;
 
         let mut students = Students {
@@ -132,7 +135,7 @@ impl ClassroomApi {
         &self,
         course_id: &str,
         course_work_id: &str,
-    ) -> Result<StudentSubmissions, Box<dyn std::error::Error>> {
+    ) -> Result<StudentSubmissions, Box<dyn std::error::Error + Send + Sync>> {
         let token = self.classroom_client.token().ok_or("Token not found")?;
 
         let resp = self
@@ -150,7 +153,7 @@ impl ClassroomApi {
     pub async fn download_student_submission(
         &self,
         file_id: &str,
-    ) -> Result<Response, Box<dyn std::error::Error>> {
+    ) -> Result<Response, Box<dyn std::error::Error + Send + Sync>> {
         let token = self.classroom_client.token().ok_or("Token not found")?;
 
         let resp = self

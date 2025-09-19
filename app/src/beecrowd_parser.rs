@@ -13,7 +13,7 @@ struct Record {
 pub fn beecrowd_report_parser(
     results: &mut HashMap<String, SubmissionResult>,
     path: &Path,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let file = File::open(path)?;
     let mut rdr = csv::Reader::from_reader(file);
 

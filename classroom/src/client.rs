@@ -36,7 +36,10 @@ impl ClassroomClient {
         Self::default()
     }
 
-    pub async fn auth(&mut self, credentials_path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn auth(
+        &mut self,
+        credentials_path: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let secret = read_application_secret(credentials_path).await?;
 
         let auth =

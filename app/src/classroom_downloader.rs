@@ -4,6 +4,7 @@ use std::{collections::HashMap, path::Path, sync::Arc, time::Instant};
 use tokio::{
     fs::{self},
     io::AsyncWriteExt,
+    sync::mpsc::Sender,
 };
 
 use classroom::{
@@ -11,6 +12,12 @@ use classroom::{
     models::{Attachment, Student, StudentSubmission, StudentSubmissions, SubmissionState},
 };
 use reporter::{SubmissionError, SubmissionResult};
+
+pub enum DownloadEvent {
+    Start(u64),
+    Progress(u64),
+    End(f32),
+}
 
 pub fn validate_submissions(
     students: &Arc<HashMap<String, Student>>,
@@ -64,7 +71,8 @@ pub async fn download_classroom_submissions(
     course_id: &str,
     assignment_id: &str,
     results: &mut HashMap<String, SubmissionResult>,
-) -> Result<f32, Box<dyn std::error::Error>> {
+    tx: Sender<DownloadEvent>,
+) -> Result<f32, Box<dyn std::error::Error + Send + Sync>> {
     let started = Instant::now();
 
     let students = api.list_students(course_id).await?;
@@ -86,6 +94,9 @@ pub async fn download_classroom_submissions(
         return Err("no valid submissions were downloaded".into());
     }
 
+    tx.send(DownloadEvent::Start(valid_submissions.len() as u64))
+        .await?;
+
     let path = format!("./submissions/{course_id}/{assignment_id}");
     let dir = Path::new(&path);
 
@@ -106,6 +117,8 @@ pub async fn download_classroom_submissions(
             let path = path.clone();
             let user_id = submission.user_id.clone();
 
+            let tx = tx.clone();
+
             handles.push(tokio::spawn(async move {
                 worker(
                     att,
@@ -114,6 +127,7 @@ pub async fn download_classroom_submissions(
                     path,
                     user_id,
                     submission.late.unwrap_or(false),
+                    tx,
                 )
                 .await
             }));
@@ -135,7 +149,11 @@ pub async fn download_classroom_submissions(
             .map(|s| (s.student.profile.email_address.to_string(), s)),
     );
 
-    Ok(Instant::now().duration_since(started).as_secs_f32())
+    let total = Instant::now().duration_since(started).as_secs_f32();
+
+    tx.send(DownloadEvent::End(total)).await?;
+
+    Ok(total)
 }
 
 async fn worker(
@@ -145,6 +163,7 @@ async fn worker(
     path: String,
     user_id: String,
     late: bool,
+    tx: Sender<DownloadEvent>,
 ) -> Result<SubmissionResult, Box<dyn std::error::Error + Send + Sync>> {
     let download = api
         .download_student_submission(&att.drive_file.id)
@@ -190,6 +209,8 @@ async fn worker(
     if late {
         errors.push(SubmissionError::Late);
     }
+
+    tx.send(DownloadEvent::Progress(1)).await?;
 
     Ok(SubmissionResult {
         student: student.clone(),
